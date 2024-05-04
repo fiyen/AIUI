@@ -6,9 +6,19 @@ import time
 
 import openai
 
-AI_COMPLETION_MODEL = os.getenv("AI_COMPLETION_MODEL", "gpt-3.5-turbo")
+from dotenv import load_dotenv
+load_dotenv()
+
+
+APIKEY = os.getenv("OPENAI_API_KEY")
+BASEURL = os.getenv("OPENAI_BASE_URL")
+
+openai.api_key = APIKEY
+openai.api_base = f"{BASEURL}/v1"
+
+AI_COMPLETION_MODEL = os.getenv("AI_COMPLETION_MODEL", "gpt-3.5-turbo-1106")
 LANGUAGE = os.getenv("LANGUAGE", "en")
-INITIAL_PROMPT = f"You are AIUI - a helpful assistant with a voice interface. Keep your responses very succinct and limited to a single sentence since the user is interacting with you through a voice interface. Always provide your responses in the language that corresponds to the ISO-639-1 code: {LANGUAGE}."
+INITIAL_PROMPT = "You are a skilled and patient English conversation teacher adept at engaging with students in a dialogue to improve their English speaking abilities. During the conversation, your role is to converse with the student, provide guidance on speaking English, respond suitably to the student's statements, naturally introduce new topics or continue existing ones, and maintain control over the direction of the conversation. One important thing you should never forget: you shold split your response into shorter sentence with about 10 words, splitting by '\n', do not forget this symbol."
 
 
 async def get_completion(user_prompt, conversation_thus_far):

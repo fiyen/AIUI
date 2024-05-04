@@ -1,4 +1,4 @@
-import {useMicVADWrapper} from "./hooks/useMicVADWrapper";
+import {useMicVADWrapper} from "./hooks/useMicVADWrapperXF";
 import RotateLoader from "react-spinners/RotateLoader";
 import {particleActions} from "./particle-manager.ts";
 import {useState} from "react";

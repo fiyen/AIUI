@@ -7,9 +7,18 @@ import uuid
 import ffmpeg
 import openai
 
-from util import delete_file
+from .util import delete_file
+
+from dotenv import load_dotenv
+load_dotenv()
 
 LANGUAGE = os.getenv("LANGUAGE", "en")
+
+APIKEY = os.getenv("OPENAI_API_KEY")
+BASEURL = os.getenv("OPENAI_BASE_URL")
+
+openai.api_key = APIKEY
+openai.api_base = f"{BASEURL}/v1"
 
 
 async def transcribe(audio):
@@ -30,8 +39,6 @@ async def transcribe(audio):
     )
     logging.debug("ffmpeg done")
 
-    delete_file(initial_filepath)
-
     read_file = open(converted_filepath, "rb")
 
     logging.debug("calling whisper")
@@ -39,6 +46,6 @@ async def transcribe(audio):
     logging.info("STT response received from whisper in %s %s", time.time() - start_time, 'seconds')
     logging.info('user prompt: %s', transcription)
 
-    delete_file(converted_filepath)
+    # delete_file(converted_filepath)
 
     return transcription

@@ -1,91 +1,102 @@
-import logging
+import asyncio
+import aiohttp
+import json
 import os
+import logging
 import time
 import uuid
+import re
 
-import requests
-from gtts import gTTS
-import edge_tts
-from elevenlabs import generate, save
+from dotenv import load_dotenv
+load_dotenv()
 
-from util import delete_file
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_VOICE = os.getenv("OPENAI_VOICE", 'alloy')
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
 
-LANGUAGE = os.getenv("LANGUAGE", "en")
-TTS_PROVIDER = os.getenv("TTS_PROVIDER", "EDGETTS")
+async def fetch_tts(client, text):
+    url = f"{OPENAI_BASE_URL}/v1/audio/speech"
+    payload = json.dumps({
+        "model": "tts-1",
+        "input": text,
+        "voice": OPENAI_VOICE
+    })
+    headers = {
+        'Authorization': f'Bearer {OPENAI_API_KEY}',
+        'User-Agent': 'Apifox/1.0.0 (https://apifox.com)',
+        'Content-Type': 'application/json'
+    }
+    # 使用 aiohttp 发送异步请求
+    async with client.post(url, headers=headers, data=payload) as response:
+        # 确保响应状态正确
+        response.raise_for_status() 
+        # 读取整个响应的音频内容
+        return await response.read()  # 读取整个内容作为bytes返回
 
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", None)
-ELEVENLABS_VOICE = os.getenv("ELEVENLABS_VOICE", "EXAVITQu4vr4xnSDxMaL")
-EDGETTS_VOICE = os.getenv("EDGETTS_VOICE", "en-US-EricNeural")
+
+def split_text(text, n_words=3):
+    """
+    用".", ","切分text，并保证切分后的句子的单词数都大于n_words.
+    """
+    text_list = text.strip().split('\n')
+    if len(text_list) > 2:
+        return [t for t in text_list if t]
+    # 先根据句号切分文本
+    text_list = re.split(r'\.', text)
+    text_list = [t + '.' for t in text_list if t]
+    # 对每个句子再根据逗号切分，并判断切分后的句子长度是否都大于等于3
+    revised_text_list = []
+    for split_symbol in [',', '?', '!']:
+        for sentence in text_list:
+            sub_sentences = sentence.split(split_symbol)
+            ori_len = len(sub_sentences)
+            sub_sentences = [sub_s.strip() for sub_s in sub_sentences if len(sub_s.split()) >= n_words]
+            sub_sentences = [sub_s + split_symbol for sub_s in sub_sentences[:-1]] + sub_sentences[-1:]
+            if len(sub_sentences) == ori_len:  # 如果相等，表明切分后的所有句子都大于n_words个单词。
+                revised_text_list.extend(sub_sentences)
+            else:
+                revised_text_list.append(sentence.strip())
+        text_list = [t for t in revised_text_list if t]
+        revised_text_list = []
+
+    return text_list
 
 
-async def to_speech(text, background_tasks):
-    if TTS_PROVIDER == "gTTS":
-        return _gtts_to_speech(text, background_tasks)
-    elif TTS_PROVIDER == "ELEVENLABS":
-        return _elevenlabs_to_speech(text, background_tasks)
-    elif TTS_PROVIDER == "STREAMELEMENTS":
-        return _streamelements_to_speech(text, background_tasks)
-    elif TTS_PROVIDER == "EDGETTS":
-        return await _edge_tts_to_speech(text, background_tasks)
-    else:
-        raise ValueError(f"env var TTS_PROVIDER set to unsupported value: {TTS_PROVIDER}")
+# async def stream_tts_responses(text):
+#     start_time = time.time()
+#     text_chunks = split_text(text)
+#     print(text_chunks)
 
+#     async def generate_audio_stream():
+#         async with aiohttp.ClientSession() as client:
+#             tasks = [fetch_tts(client, text) for text in text_chunks]
+#             audio_chunks = await asyncio.gather(*tasks)  # 收集所有生成的音频chunk
+#             for chunk in audio_chunks:  # 逐个yield
+#                 yield chunk
+#             logging.info('TTS time return over: %s %s', time.time() - start_time, 'seconds')
 
-async def _edge_tts_to_speech(text, background_tasks):
+#     return generate_audio_stream()  # 注意这里直接调用函数来获取生成器
+async def stream_tts_responses(text):
     start_time = time.time()
+    text_chunks = split_text(text)
+    print(text_chunks)
 
-    communicate = edge_tts.Communicate(text, EDGETTS_VOICE)
-    filepath = f"/tmp/{uuid.uuid4()}.mp3"
-    await communicate.save(filepath)
+    async def generate_audio_stream():
+        async with aiohttp.ClientSession() as client:
+            # 创建所有任务，但不立即等待它们
+            tasks = [asyncio.create_task(fetch_tts(client, text_chunk)) for text_chunk in text_chunks]
 
-    background_tasks.add_task(delete_file, filepath)
+            # 按照文本块的原始顺序返回结果
+            for task in tasks:
+                try:
+                    audio_chunk = await task
+                    yield audio_chunk
+                except Exception as e:
+                    logging.error('Error during TTS processing: %s', e)
+                    # 如果需要，可以在这里生成一个错误的音频块，或者直接跳过
+        logging.info('TTS time return over: %s %s', time.time() - start_time, 'seconds')
+    return generate_audio_stream()  # Get the generator function to stream audio
 
-    logging.info('TTS time: %s %s', time.time() - start_time, 'seconds')
-    return filepath
-
-
-def _gtts_to_speech(text, background_tasks):
-    start_time = time.time()
-
-    tts = gTTS(text, lang=LANGUAGE)
-    filepath = f"/tmp/{uuid.uuid4()}.mp3"
-    tts.save(filepath)
-
-    background_tasks.add_task(delete_file, filepath)
-
-    logging.info('TTS time: %s %s', time.time() - start_time, 'seconds')
-    return filepath
+# 注意，如果在FastAPI中使用上述代码应确保endpoint是异步的，并且能正确处理异步生成器
 
 
-def _elevenlabs_to_speech(text, background_tasks):
-    start_time = time.time()
-
-    audio = generate(
-        api_key=ELEVENLABS_API_KEY,
-        text=text,
-        voice=ELEVENLABS_VOICE,
-        model="eleven_monolingual_v1"
-    )
-
-    filepath = f"/tmp/{uuid.uuid4()}.mp3"
-    save(audio, filepath)
-
-    background_tasks.add_task(delete_file, filepath)
-
-    logging.info('TTS time: %s %s', time.time() - start_time, 'seconds')
-    return filepath
-
-
-def _streamelements_to_speech(text, background_tasks):
-    start_time = time.time()
-
-    response = requests.get(f"https://api.streamelements.com/kappa/v2/speech?voice=Salli&text={text}")
-
-    filepath = f"/tmp/{uuid.uuid4()}.mp3"
-    with open(filepath, "wb") as f:
-        f.write(response.content)
-
-    background_tasks.add_task(delete_file, filepath)
-
-    logging.info('TTS time: %s %s', time.time() - start_time, 'seconds')
-    return filepath

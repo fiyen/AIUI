@@ -1,52 +1,91 @@
-import { utils } from "@ricky0123/vad-react";
 import {particleActions} from "./particle-manager.ts";
+import { SpeechPlayer } from "./player.ts";
 
-let source: AudioBufferSourceNode;
-let sourceIsStarted = false;
+// let speechEndTimer: ReturnType<typeof setTimeout> | null = null;
+let player: SpeechPlayer | undefined;
+let speechIsStart = false
+let audioIsPlaying = false
+let firstAudioSend = false
+// const speechEndTimeoutThreshold = 150000; // Set to 15 seconds
+
 const conversationThusFar = [];
 
-export const onSpeechStart = () => {
+// const Url = "https://test.yangyang-backend.cn";
+const Url = "http://127.0.0.1:8000";
+
+export const onSpeechStart = debounce( async (record) => {
     console.log("speech started");
-    particleActions.onUserSpeaking();
+    speechIsStart = true;
     stopSourceIfNeeded();
-};
+    particleActions.onUserSpeaking();
+    console.log("try to connect webSocket")
+    record.start();
+}, 1000);
 
-export const onSpeechEnd = async (audio) => {
+export const onSpeechDoing = debounce( async (audioList, record) => {
+    // 将返回的 audio 数据拼接起来
+    // concatenatedAudio = concatenateFloat32Arrays(concatenatedAudio, audio);
+    let status: number;
+    if (firstAudioSend) {status = 1;} else {status = 0; firstAudioSend=true}
+    const transAudioList = audioList.map((audio, index) => ({
+        audio: transcode(audio),
+        status: (status === 0 && index === 0) ? 0 : 1
+    }));
+    // console.log("SpeechDoing", audio, transAudio);
+    record.pushAudioList(transAudioList);
+}, 40);
+
+export const onSpeechEnd = debounce(async (audio, record) => {
     console.log("speech ended");
-    await processAudio(audio);
-};
+    speechIsStart = false;
+    // const blob = createAudioBlob(concatenatedAudio);
+    // saveAudioData(blob);
+    // 等待录音停止并获取最终识别结果
+    record.pushAudioList([{audio: '', status: 2}]); // 结束
+    await record.stopAndGetText();
+    await fastProcessAudio(record);
+}, 1000);
 
-export const onMisfire = () => {
+export const onMisfire = debounce((record) => {
     console.log("vad misfire");
+    speechIsStart = false;
+    record.stop();
+    // record.setStatus(null);
     particleActions.reset();
-};
+}, 1000);
+
+// export const initSpeechEndTimer = (record) => {
+//     speechEndTimer = setTimeout(() => {
+//         // 在此处填充特定文本，并调用sendData。例如:
+//         console.log("No speech detected. Auto triggering conversation.");
+//         fastSendData(record, true);
+//     }, speechEndTimeoutThreshold);
+// };
 
 const stopSourceIfNeeded = () => {
-    if (source && sourceIsStarted) {
-        source.stop(0);
-        sourceIsStarted = false;
+    if (speechIsStart && audioIsPlaying) {
+        console.log("Need to stop player.")
+        // resetSpeechEndTimer();
+        audioIsPlaying = false;
+        player.pause();
     }
+
 };
 
-const processAudio = async (audio) => {
+const fastProcessAudio = async (record) => {
     particleActions.onProcessing();
-    const blob = createAudioBlob(audio);
-    await validate(blob);
-    sendData(blob);
-};
+    fastSendData(record);
+}
 
-const createAudioBlob = (audio) => {
-    const wavBuffer = utils.encodeWAV(audio);
-    return new Blob([wavBuffer], { type: 'audio/wav' });
-};
-
-const sendData = (blob) => {
+const fastSendData = (record, reminder=false) => {
     console.log("sending data");
-    fetch("inference", {
+    // resetSpeechEndTimer(); // Reset timer whenever speech ends
+    fetch(`${Url}/inference`, {
         method: "POST",
-        body: createBody(blob),
+        body: JSON.stringify({ text: record.perText }),
         headers: {
-            'conversation': base64Encode(JSON.stringify(conversationThusFar))
+            'conversation': base64Encode(JSON.stringify(conversationThusFar)),
+            'reminder': reminder.toString()
         }
     })
         .then(handleResponse)
@@ -66,6 +105,24 @@ function base64Decode(base64: string) {
     return new TextDecoder().decode(bytes);
 }
 
+// 防抖动设置，务必选择，因为vad会触发多次录音，导致一次问题有多个post，拖慢后台回复时间。
+function debounce(func, delay) {
+    let debounceTimer;
+    return function(...args) {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        func.apply(this, args);
+      }, delay);
+    };
+  }
+
+// function resetSpeechEndTimer() {
+//     console.log("resetSpeechEndTimer")
+//     clearTimeout(speechEndTimer);
+//     speechEndTimer = null;
+//     console.log("SpeechEndTimer Reset");
+// }
+
 const handleResponse = async (res) => {
     if (!res.ok) {
         return res.text().then(error => {
@@ -75,39 +132,54 @@ const handleResponse = async (res) => {
 
     const newMessages = JSON.parse(base64Decode(res.headers.get("text")));
     conversationThusFar.push(...newMessages);
-    return res.blob();
+
+    return res;
 };
 
-const createBody = (data) => {
-    const formData = new FormData();
-    formData.append("audio", data, "audio.wav");
-    return formData;
-};
-
-const handleSuccess = async (blob) => {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
+const handleSuccess = async (response) => {
+    audioIsPlaying = true
     stopSourceIfNeeded();
+    const audioEl = document.querySelector('audio');
+    player = new SpeechPlayer({
+        audio: audioEl,
+        onPlaying: () => {},
+        onPause: () => {onAiSpeakPaused()},
+        onChunkEnd: () => {onAiSpeakEnded()},
+        mimeType: 'audio/mpeg',
+      });
+    await player.init();
+    player.feedWithResponse(response);
+}
 
-    source = audioContext.createBufferSource();
-    source.buffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
-    source.connect(audioContext.destination);
-    source.start(0);
-    sourceIsStarted = true;
-    source.onended = particleActions.reset;
-
-    particleActions.onAiSpeaking();
+const onAiSpeakEnded = () => {
+    console.log("AI Speak End...")
+    particleActions.reset();
+    audioIsPlaying = false;
 };
+
+const onAiSpeakPaused = () => {
+    audioIsPlaying = false;
+}
 
 const handleError = (error) => {
     console.log(`error encountered: ${error.message}`);
     particleActions.reset();
 };
-
-const validate = async (data) => {
-    const decodedData = await new AudioContext().decodeAudioData(await data.arrayBuffer());
-    const duration = decodedData.duration;
-    const minDuration = 0.4;
-
-    if (duration < minDuration) throw new Error(`Duration is ${duration}s, which is less than minimum of ${minDuration}s`);
-};
+  
+  const to16BitPCM = (input) => {
+    const dataLength = input.length * (16 / 8);
+    const dataBuffer = new ArrayBuffer(dataLength);
+    const dataView = new DataView(dataBuffer);
+    let offset = 0;
+    for (let i = 0; i < input.length; i++, offset += 2) {
+        const s = Math.max(-1, Math.min(1, input[i]));
+        dataView.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+    return dataView;
+  }
+  
+  const transcode = (audioData) => {
+    const output = to16BitPCM(audioData);
+    return Array.from(new Uint8Array(output.buffer));
+  }
+  
