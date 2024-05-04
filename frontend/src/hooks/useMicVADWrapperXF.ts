@@ -3,6 +3,10 @@ import { useMicVAD } from "@fiyen/vad-react/src";
 import IatRecorder from "./xf-voice-dictation"; // 调整为正确的路径
 import { onSpeechStart, onSpeechEnd, onMisfire, onSpeechDoing } from "../speech-manager"; // 确认路径
 
+const APPID = import.meta.env.VITE_XFAPPID
+const APISecret = import.meta.env.VITE_XFAPISecret
+const APIKey = import.meta.env.VITE_XFAPIKey
+
 export const useMicVADWrapper = (onLoadingChange) => {
   
   // 初始化讯飞语音识别实例的 ref
@@ -12,8 +16,8 @@ export const useMicVADWrapper = (onLoadingChange) => {
     preSpeechPadFrames: 5,
     positiveSpeechThreshold: 0.90,
     negativeSpeechThreshold: 0.75,
-    redemptionFrames: 40,
-    minSpeechFrames: 8,
+    redemptionFrames: 30,
+    minSpeechFrames: 10,
     startOnLoad: true,
     onSpeechStart: () => onSpeechStart(recorderRef.current), 
     onSpeechEnd: (audio) => onSpeechEnd(audio, recorderRef.current),
@@ -28,9 +32,9 @@ export const useMicVADWrapper = (onLoadingChange) => {
     if (!recorderRef.current) {
       // 初始化 IatRecorder 实例并存储到 ref 中
       recorderRef.current = new IatRecorder({
-        APPID: '822c6053',
-        APISecret: 'M2IzOGUxNTdjMTNkZDk1NmE5OGQyZTBi',
-        APIKey: '52cbdf917b14bfb5675972d192b23c37',
+        APPID: APPID,
+        APISecret: APISecret,
+        APIKey: APIKey,
         // 其他可能的配置项
         onWillStatusChange: function (oldStatus, newStatus) {
             // 可以在这里进行页面中一些交互逻辑处理：注：倒计时（语音听写只有60s）,录音的动画，按钮交互等！
