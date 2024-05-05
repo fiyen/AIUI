@@ -31,6 +31,14 @@ const turnSpeed = () => 2 * Math.PI / framesPerRotation //the sphere will rotate
 // 添加一个变量来追踪当前的状态文字
 let statusText: string = "说些什么";
 
+// 添加一个变量来追踪当前的动画状态
+let animationState: string = "idleWave";
+const historyBarHeight = Array(6).fill(0)
+
+function setAnimationState(newState: string) {
+    animationState = newState;
+    historyBarHeight.fill(0);
+}
 // 提供一个设置状态文本的方法
 function setStatusText(newStatusText: string) {
     statusText = newStatusText;
@@ -46,29 +54,32 @@ const onUserSpeaking = () => {
     sphereRad = 180
     setOrange()
     setStatusText('聆听中')
-}
+    setAnimationState('random') // 在聆听状态时，条柱的变动是随机的
+};
 const onProcessing = () => {
     console.log("processing")
     framesPerRotation = 10000
     sphereRad = 80
     setViolet()
     setStatusText('思考中')
-}
+    setAnimationState('fastWave') // 在思考状态时，条柱的变动是快速的正弦波
+};
 const onAiSpeaking = () => {
     console.log("ai speaking")
     framesPerRotation = 5000
     sphereRad = 200
     setFuchsia()
     setStatusText('回答中')
-}
+    setAnimationState('random') // 在回答状态时，条柱的变动也是随机的
+};
 const reset = () => {
     console.log("reset")
     framesPerRotation = 5000
     sphereRad = 130
     setLightBlue()
     setStatusText('说些什么')
-}
-
+    setAnimationState('idleWave') // 在等待状态时，条柱的变动是平缓的正弦波
+};
 const wait = 1
 let count = wait - 1
 const numToAddEachFrame = 10
@@ -216,6 +227,40 @@ function draw(context, displayWidth, displayHeight, projCenterX, projCenterY) {
 
         p = nextParticle
     }
+    // 绘制语音条柱，6条，等间隔居中排列
+    const numBars = 6; // 条柱的数量
+    const barSpacing = 10; // 条柱间距
+    const barWidth = 20; // 条柱的宽度
+    const barHeight = 40; // 条柱最高高度
+
+    // 计算所有柱子占据的总宽度
+    const totalBarsWidth = numBars * barWidth + (numBars - 1) * barSpacing; 
+
+    // 计算第一根柱子的X坐标，确保整个柱组在画布中心
+    const firstBarPositionX = projCenterX - totalBarsWidth / 2; 
+    
+    // 随机，但是不能太剧烈，添加历史高度进行控制。
+
+    for (let i = 0; i < numBars; i++) {
+        let newHeight
+        switch(animationState) {
+            case 'random':
+                newHeight = historyBarHeight[i] + Math.random() * 10 * (Math.random() < 0.5 ? 1 : -1); // 随机变化
+                break;
+            case 'fastWave':
+                newHeight = 25 + 25 * Math.sin(Date.now() / 100 + i);  // 快速正弦波
+                break;
+            case 'idleWave':
+                newHeight = 25 + 25 * Math.sin(Date.now() / 1000 + i);  // 平缓正弦波
+                break;
+            default:
+                newHeight = 25 + 25 * Math.sin(Date.now() / 100 + i);  // 平缓正弦波
+        }
+        const barHeightNow = Math.max(0, Math.min(newHeight, barHeight));
+        historyBarHeight[i] = barHeightNow;
+        const barPositionX = firstBarPositionX + i * (barWidth + barSpacing);
+        drawBar(context, barWidth, barHeightNow, barPositionX, projCenterY*1.25, 1);
+    }
 }
 
 function addParticle(x0, y0, z0, vx0, vy0, vz0) {
@@ -290,6 +335,44 @@ function recycle(p) {
         recycleBin.first = p
         p.prev = null
     }
+}
+
+// 这个函数绘制一个条柱，根据传入的高度参数 h 改变其高度
+function drawBar(context, barWidth, barHeight, positionX, positionY, opacity) {
+    drawItem(positionX, positionY - barHeight / 2, barWidth, barHeight, context, opacity);
+}
+
+function drawItem(x, y, w, h, ctx, opacity = 1) {
+    const radius = w / 2;
+
+    // 确定半透明度在规定范围内
+    opacity = Math.max(0.1, opacity)
+
+    // 开始绘制路径
+    ctx.beginPath();
+
+    // 绘制上半圆
+    ctx.arc(x + radius, y, radius, Math.PI, 0, false);
+
+    // 绘制右侧直线
+    ctx.lineTo(x + w, y + h - radius);
+
+    // 绘制下半圆
+    ctx.arc(x + radius, y + h, radius, 0, Math.PI, false);
+
+    // 绘制左侧直线，关闭路径
+    ctx.lineTo(x, y + radius);
+
+    // 设置样式并且填充颜色
+    ctx.fillStyle = getBarColor(opacity);
+    ctx.closePath();
+    ctx.fill();
+}
+
+function getBarColor(opacity) {
+    // 假定这个函数返回一个合适的颜色值
+    // 这里使用 rgba 颜色模型，并插入透明度参数
+    return `rgba(255, 100, 100, ${opacity})`; // 示例：返回红色半透明色
 }
 
 export const particleActions = {

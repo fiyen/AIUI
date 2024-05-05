@@ -65,10 +65,24 @@ const App = () => {
                 bottom: "120px",
                 width: "100%",
                 textAlign: "center",
-                color: "#27eab6",
+                color: "transparent", // 让文字颜色透明
+                backgroundImage: "linear-gradient(to right, #ff7e5f, #feb47b)", // 使用渐变背景色
+                WebkitBackgroundClip: "text", // 设置背景只在文字部分显示
+                fontSize: "22px",
+                fontFamily: "cursive",
+                animation: "colorChange 5s infinite", // 添加颜色动画效果
+                textShadow: "2px 2px 4px #000000", // 添加字体阴影
+                WebkitTextStroke: "1px #27eab6" // 添加文字描边效果
             }}>
-                {status + ellipsis}
+            {status + ellipsis}
             </div>
+            <style>{`
+                @keyframes colorChange {
+                    0% { color: #ff7e5f; }
+                    50% { color: #feb47b; }
+                    100% { color: #ff7e5f; }
+            }
+            `}</style>
         </div>
     );
     
