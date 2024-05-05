@@ -14,44 +14,50 @@ const conversationThusFar = [];
 const Url = "http://127.0.0.1:8000";
 
 export const onSpeechStart = debounce( async (record) => {
-    console.log("speech started");
-    speechIsStart = true;
-    stopSourceIfNeeded();
-    particleActions.onUserSpeaking();
-    console.log("try to connect webSocket")
-    record.start();
+    if (!audioIsPlaying) {
+        console.log("speech started");
+        speechIsStart = true;
+        // stopSourceIfNeeded();
+        particleActions.onUserSpeaking();
+        console.log("try to connect webSocket")
+        record.start();
+    }
 }, 1000);
 
 export const onSpeechDoing = debounce( async (audioList, record) => {
-    // 将返回的 audio 数据拼接起来
-    // concatenatedAudio = concatenateFloat32Arrays(concatenatedAudio, audio);
-    let status: number;
-    if (firstAudioSend) {status = 1;} else {status = 0; firstAudioSend=true}
-    const transAudioList = audioList.map((audio, index) => ({
-        audio: transcode(audio),
-        status: (status === 0 && index === 0) ? 0 : 1
-    }));
-    // console.log("SpeechDoing", audio, transAudio);
-    record.pushAudioList(transAudioList);
+    if (!audioIsPlaying) {
+        let status: number;
+        if (firstAudioSend) {status = 1;} else {status = 0; firstAudioSend=true}
+        const transAudioList = audioList.map((audio, index) => ({
+            audio: transcode(audio),
+            status: (status === 0 && index === 0) ? 0 : 1
+        }));
+        // console.log("SpeechDoing", audio, transAudio);
+        record.pushAudioList(transAudioList);
+    }
 }, 40);
 
 export const onSpeechEnd = debounce(async (audio, record) => {
-    console.log("speech ended");
-    speechIsStart = false;
-    // const blob = createAudioBlob(concatenatedAudio);
-    // saveAudioData(blob);
-    // 等待录音停止并获取最终识别结果
-    record.pushAudioList([{audio: '', status: 2}]); // 结束
-    await record.stopAndGetText();
-    await fastProcessAudio(record);
+    if (!audioIsPlaying) {
+        console.log("speech ended");
+        speechIsStart = false;
+        // const blob = createAudioBlob(concatenatedAudio);
+        // saveAudioData(blob);
+        // 等待录音停止并获取最终识别结果
+        record.pushAudioList([{audio: '', status: 2}]); // 结束
+        await record.stopAndGetText();
+        await fastProcessAudio(record);
+    }
 }, 1000);
 
 export const onMisfire = debounce((record) => {
-    console.log("vad misfire");
-    speechIsStart = false;
-    record.stop();
-    // record.setStatus(null);
-    particleActions.reset();
+    if (!audioIsPlaying) {
+        console.log("vad misfire");
+        speechIsStart = false;
+        record.stop();
+        // record.setStatus(null);
+        particleActions.reset();
+    }
 }, 1000);
 
 // export const initSpeechEndTimer = (record) => {
@@ -62,15 +68,15 @@ export const onMisfire = debounce((record) => {
 //     }, speechEndTimeoutThreshold);
 // };
 
-const stopSourceIfNeeded = () => {
-    if (speechIsStart && audioIsPlaying) {
-        console.log("Need to stop player.")
-        // resetSpeechEndTimer();
-        audioIsPlaying = false;
-        player.pause();
-    }
+// const stopSourceIfNeeded = () => {
+//     if (speechIsStart && audioIsPlaying) {
+//         console.log("Need to stop player.")
+//         // resetSpeechEndTimer();
+//         audioIsPlaying = false;
+//         player.pause();
+//     }
 
-};
+// };
 
 const fastProcessAudio = async (record) => {
     particleActions.onProcessing();
@@ -137,18 +143,20 @@ const handleResponse = async (res) => {
 };
 
 const handleSuccess = async (response) => {
-    audioIsPlaying = true
-    stopSourceIfNeeded();
-    const audioEl = document.querySelector('audio');
-    player = new SpeechPlayer({
-        audio: audioEl,
-        onPlaying: () => {},
-        onPause: () => {onAiSpeakPaused()},
-        onChunkEnd: () => {onAiSpeakEnded()},
-        mimeType: 'audio/mpeg',
-      });
-    await player.init();
-    player.feedWithResponse(response);
+    if (!speechIsStart) {
+        audioIsPlaying = true
+        // stopSourceIfNeeded();
+        const audioEl = document.querySelector('audio');
+        player = new SpeechPlayer({
+            audio: audioEl,
+            onPlaying: () => {particleActions.onAiSpeaking()},
+            onPause: () => {onAiSpeakEnded()},
+            onChunkEnd: () => {},
+            mimeType: 'audio/mpeg',
+          });
+        await player.init();
+        await player.feedWithResponse(response);
+    }
 }
 
 const onAiSpeakEnded = () => {
@@ -157,9 +165,10 @@ const onAiSpeakEnded = () => {
     audioIsPlaying = false;
 };
 
-const onAiSpeakPaused = () => {
-    audioIsPlaying = false;
-}
+// const onAiSpeakPaused = () => {
+//     console.log("AI Speak Paused...")
+//     audioIsPlaying = false;
+// }
 
 const handleError = (error) => {
     console.log(`error encountered: ${error.message}`);

@@ -1,4 +1,4 @@
-const sphereRad = 280 // 20..500
+let sphereRad = 130 // 20..500
 const radius_sp = 1 // 1..2
 let framesPerRotation = 5000
 let r, g, b  // particle color
@@ -28,30 +28,50 @@ setLightBlue()
 
 const turnSpeed = () => 2 * Math.PI / framesPerRotation //the sphere will rotate at this speed (one complete rotation every 1600 frames).
 
+// 添加一个变量来追踪当前的状态文字
+let statusText: string = "说些什么";
+
+// 提供一个设置状态文本的方法
+function setStatusText(newStatusText: string) {
+    statusText = newStatusText;
+}
+
+function getStatusText() {
+    return statusText
+}
+
 const onUserSpeaking = () => {
     console.log("user speaking")
     framesPerRotation = 5000
+    sphereRad = 180
     setOrange()
+    setStatusText('聆听中')
 }
 const onProcessing = () => {
     console.log("processing")
-    framesPerRotation = 1000
+    framesPerRotation = 10000
+    sphereRad = 80
     setViolet()
+    setStatusText('思考中')
 }
 const onAiSpeaking = () => {
     console.log("ai speaking")
     framesPerRotation = 5000
+    sphereRad = 200
     setFuchsia()
+    setStatusText('回答中')
 }
 const reset = () => {
     console.log("reset")
     framesPerRotation = 5000
+    sphereRad = 130
     setLightBlue()
+    setStatusText('说些什么')
 }
 
 const wait = 1
 let count = wait - 1
-const numToAddEachFrame = 8
+const numToAddEachFrame = 10
 const particleList = {
     first: undefined
 }
@@ -65,8 +85,8 @@ let m
 // we will not draw coordinates if they have too large of a z-coordinate (which means they are very close to the observer).
 const zMax = fLen - 2
 let turnAngle = 1 //initial angle
-const sphereCenterY = 0, sphereCenterZ = -3 - sphereRad
-const particleRad = 2.5
+const sphereCenterY = -150, sphereCenterZ = -3 - sphereRad
+const particleRad = 3
 
 //alpha values will lessen as particles move further back, causing depth-based darkening:
 const zeroAlphaDepth = -750
@@ -276,6 +296,7 @@ export const particleActions = {
     onUserSpeaking,
     onProcessing,
     onAiSpeaking,
+    getStatusText,
     reset,
     draw
 };

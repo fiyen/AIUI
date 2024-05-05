@@ -32,6 +32,8 @@ interface Options {
     mediaSourceOpened: boolean = false;
     /** @type {Options} */
     options: Options = {};
+
+    isStreamEnd: boolean = false;
   
     get audio() {
       return this._audio;
@@ -69,6 +71,7 @@ interface Options {
   
     async init() {
       return new Promise((resolve, reject) => {
+        this.isStreamEnd = false;
         this.destroyed = false;
         this.mediaSource = new MediaSource();
         this.audio.src = URL.createObjectURL(this.mediaSource);
@@ -86,7 +89,9 @@ interface Options {
         this.sourceBuffer = this.mediaSource.addSourceBuffer(this.options?.mimeType ?? 'audio/mpeg');
         let timer = 0;
         this.audio.addEventListener('playing', () => {
-          this.options.onPlaying && this.options.onPlaying();
+          if (this.mediaSource.readyState !== "ended") {
+            this.options.onPlaying && this.options.onPlaying();
+          }
         });
         this.audio.addEventListener('pause', () => {
           this.options.onPause && this.options.onPause();
@@ -102,10 +107,11 @@ interface Options {
           timer = setTimeout(() => {
             if (!this.sourceBuffer.updating
               && this.mediaSource.readyState === 'open'
-              && this.sourceBufferCache.length === 0) {
+              && this.sourceBufferCache.length === 0
+              && this.isStreamEnd) {
               this.mediaSource.endOfStream();
-              // this.options.onChunkEnd && this.options.onChunkEnd();
-              this.options.onChunkEnd();
+              this.options.onChunkEnd && this.options.onChunkEnd();
+              // this.options.onChunkEnd();
             }
           }, 500);
         });
@@ -132,6 +138,8 @@ interface Options {
       for await (const chunk of SpeechPlayer.streamAsyncIterable(response.body as ReadableStream<Uint8Array>)) {
         this.feed(chunk);
       }
+      // 添加流式结束的标志
+      this.isStreamEnd = true;
     }
   
     play(): Promise<boolean> {
