@@ -18,6 +18,10 @@ logging.basicConfig(level=logging.INFO)
 # 允许的源列表，可以是具体的域名或'*'（代表所有源）
 origins = [
     "http://localhost:3000",  # 允许前端应用的源
+    "https://talk.yangyang-backend.cn",
+    "http://localhost:3100", 
+    "http://127.0.0.1:3100",
+    "http://127.0.0.1:3000"
     # "http://anotherfrontend.com", # 如果你有其他前端域名，也可以添加到这个列表中
 ]
 

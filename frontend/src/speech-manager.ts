@@ -1,4 +1,4 @@
-import {particleActions} from "./particle-manager.ts";
+import {particleActions} from "./profile-chat-manager.ts";
 import { SpeechPlayer } from "./player.ts";
 
 // let speechEndTimer: ReturnType<typeof setTimeout> | null = null;

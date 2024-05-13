@@ -24,12 +24,22 @@ const setFuchsia = () => {
     b = 144
 }
 
+const wait = 1
+let count = wait - 1
+const numToAddEachFrame = 5
+const particleList = {
+    first: undefined
+}
+const recycleBin = {
+    first: undefined
+}
+
 setLightBlue()
 
 const turnSpeed = () => 2 * Math.PI / framesPerRotation //the sphere will rotate at this speed (one complete rotation every 1600 frames).
 
 // 添加一个变量来追踪当前的状态文字
-let statusText: string = "说些什么";
+let statusText: string = "我在听，您请讲";
 
 // 添加一个变量来追踪当前的动画状态
 let animationState: string = "idleWave";
@@ -48,9 +58,12 @@ function getStatusText() {
     return statusText
 }
 
+const fastVolecity = 10;
+
 const onUserSpeaking = () => {
     console.log("user speaking")
     framesPerRotation = 5000
+    startFastMove(180, sphereRad < 180 ? 'outwards': 'inwards', fastVolecity)
     sphereRad = 180
     setOrange()
     setStatusText('聆听中')
@@ -58,37 +71,33 @@ const onUserSpeaking = () => {
 };
 const onProcessing = () => {
     console.log("processing")
-    framesPerRotation = 10000
-    sphereRad = 80
+    framesPerRotation = 100
+    startFastMove(100, sphereRad < 100 ? 'outwards': 'inwards', fastVolecity)
+    sphereRad = 100
     setViolet()
     setStatusText('思考中')
     setAnimationState('fastWave') // 在思考状态时，条柱的变动是快速的正弦波
 };
 const onAiSpeaking = () => {
     console.log("ai speaking")
-    framesPerRotation = 5000
+    framesPerRotation = 1000
+    startFastMove(200, sphereRad < 200 ? 'outwards': 'inwards', fastVolecity)
     sphereRad = 200
     setFuchsia()
-    setStatusText('回答中')
+    setStatusText('正在回复')
+    // particleList.first = null
     setAnimationState('random') // 在回答状态时，条柱的变动也是随机的
 };
 const reset = () => {
     console.log("reset")
     framesPerRotation = 5000
+    startFastMove(130, sphereRad < 130 ? 'outwards': 'inwards', fastVolecity)
     sphereRad = 130
     setLightBlue()
-    setStatusText('说些什么')
+    setStatusText('我在听，您请讲')
     setAnimationState('idleWave') // 在等待状态时，条柱的变动是平缓的正弦波
 };
-const wait = 1
-let count = wait - 1
-const numToAddEachFrame = 10
-const particleList = {
-    first: undefined
-}
-const recycleBin = {
-    first: undefined
-}
+
 const particleAlpha = 1 // maximum alpha
 const fLen = 320 // represents the distance from the viewer to z=0 depth.
 let m
@@ -172,15 +181,36 @@ function draw(context, displayWidth, displayHeight, projCenterX, projCenterY) {
         p.age++
 
         //if the particle is past its "stuck" time, it will begin to move.
-        if (p.age > p.stuckTime) {
-            p.velX += p.accelX + randAccelX * (Math.random() * 2 - 1)
-            p.velY += p.accelY + randAccelY * (Math.random() * 2 - 1)
-            p.velZ += p.accelZ + randAccelZ * (Math.random() * 2 - 1)
+        // Check if the fastMove behavior should be applied
+        if (p.isFastMoving) {
+            const distance = Math.sqrt(p.x ** 2 + (p.y - sphereCenterY) ** 2 + (p.z - sphereCenterZ) ** 2);
+            const isMovingTowards = p.direction === 'inwards';
+            
+            // If particle is not yet at minDistance, then move it at the velocity specified
+            if ((isMovingTowards && distance > p.minDistance) || (!isMovingTowards && distance < p.minDistance)) {
 
-            p.x += p.velX
-            p.y += p.velY
-            p.z += p.velZ
+                // Update particle position based on direction and velocity
+                const velocityFactor = isMovingTowards ? -p.velocity : p.velocity;
+                p.x += velocityFactor * p.velX;
+                p.y += velocityFactor * p.velY;
+                p.z += velocityFactor * p.velZ;
+
+            } else {
+                // Stop fastMove behavior if minDistance has been reached
+                p.isFastMoving = false;
+            }
+        } else {
+            if (p.age > p.stuckTime) {
+                p.velX += p.accelX + randAccelX * (Math.random() * 2 - 1)
+                p.velY += p.accelY + randAccelY * (Math.random() * 2 - 1)
+                p.velZ += p.accelZ + randAccelZ * (Math.random() * 2 - 1)
+    
+                p.x += p.velX
+                p.y += p.velY
+                p.z += p.velZ
+            }
         }
+
 
         /*
         We are doing two things here to calculate display coordinates.
@@ -304,6 +334,11 @@ function addParticle(x0, y0, z0, vx0, vy0, vz0) {
     newParticle.age = 0
     newParticle.dead = false
     newParticle.right = Math.random() < 0.5;
+    // Initialize new properties for fastMove behavior
+    newParticle.isFastMoving = false;
+    newParticle.minDistance = 0;
+    newParticle.direction = 0;
+    newParticle.velocity = 0;
     return newParticle
 }
 
@@ -336,6 +371,20 @@ function recycle(p) {
         p.prev = null
     }
 }
+
+function startFastMove(minDistance, direction, velocity) {
+    p = particleList.first
+    while (p != null) {
+        //before list is altered record next particle
+        nextParticle = p.next
+        p.isFastMoving = true;
+        p.minDistance = minDistance;
+        p.direction = direction; // 'inwards' or 'outwards'
+        p.velocity = velocity;
+        p = nextParticle;
+    }
+}
+
 
 // 这个函数绘制一个条柱，根据传入的高度参数 h 改变其高度
 function drawBar(context, barWidth, barHeight, positionX, positionY, opacity) {

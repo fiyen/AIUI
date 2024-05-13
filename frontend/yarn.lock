@@ -413,15 +413,7 @@
   "resolved" "https://registry.npmmirror.com/@protobufjs/utf8/-/utf8-1.1.0.tgz"
   "version" "1.1.0"
 
-"@ricky0123/vad-react@^0.0.17":
-  "integrity" "sha512-KUWLhGcqPpDk65gq02zkyuuZPemKBLaHgiYAZ0kpQ2zYZH5XtLoi2ptwF6nFjeQRo2Xu3I1/DmH0iDbj37g36g=="
-  "resolved" "https://registry.npmmirror.com/@ricky0123/vad-react/-/vad-react-0.0.17.tgz"
-  "version" "0.0.17"
-  dependencies:
-    "@ricky0123/vad-web" "*"
-    "onnxruntime-web" "^1.14.0"
-
-"@ricky0123/vad-web@*", "@ricky0123/vad-web@^0.0.17":
+"@ricky0123/vad-web@^0.0.17":
   "integrity" "sha512-yaybStyg/q5UYrwn2IRD3eE1i7KvUh9kpJ+jCqxgv1mpGrhgagTVP9TwjOOIbcwFlq3nflpQqJ27bh+6zAEDlw=="
   "resolved" "https://registry.npmmirror.com/@ricky0123/vad-web/-/vad-web-0.0.17.tgz"
   "version" "0.0.17"
@@ -1484,6 +1476,13 @@
   "resolved" "https://registry.npmmirror.com/get-value/-/get-value-2.0.6.tgz"
   "version" "2.0.6"
 
+"gifler@^0.1.0":
+  "integrity" "sha512-izxtvqo2IKOPif6KEaTZkLWpKcqJpAZ8+6+xhp75DgsFmYpk0BMi5ILjIMyN6zurqbrrWZHvHJXtPA4nc+pPug=="
+  "resolved" "https://registry.npmmirror.com/gifler/-/gifler-0.1.0.tgz"
+  "version" "0.1.0"
+  dependencies:
+    "omggif" "1.0.x"
+
 "glob-parent@^3.1.0":
   "integrity" "sha512-E8Ak/2+dZY6fnzlR7+ueWvhsH1SjHr4jjss4YS/h4py44jY9MhK/VFdaZJAWDz6BbL21KeteKxFSFpq8OS5gVA=="
   "resolved" "https://registry.npmmirror.com/glob-parent/-/glob-parent-3.1.0.tgz"
@@ -2250,6 +2249,11 @@
   "version" "1.3.0"
   dependencies:
     "isobject" "^3.0.1"
+
+"omggif@1.0.x":
+  "integrity" "sha512-LMJTtvgc/nugXj0Vcrrs68Mn2D1r0zf630VNtqtpI1FEO7e+O9FP4gqs9AcnBaSEeoHIPm28u6qgPR0oyEpGSw=="
+  "resolved" "https://registry.npmmirror.com/omggif/-/omggif-1.0.10.tgz"
+  "version" "1.0.10"
 
 "on-finished@~2.3.0":
   "integrity" "sha512-ikqdkGAAyf/X/gPhXGvfgAytDZtDbr+bkNUJ0N9h5MI/dmdgCs3l6hoHrcUv41sRKew3jIwrp4qQDXiK99Utww=="

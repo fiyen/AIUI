@@ -14,9 +14,9 @@ export const useMicVADWrapper = (onLoadingChange) => {
 
   const micVAD = useMicVAD({
     preSpeechPadFrames: 5,
-    positiveSpeechThreshold: 0.90,
-    negativeSpeechThreshold: 0.75,
-    redemptionFrames: 25,
+    positiveSpeechThreshold: 0.60,
+    negativeSpeechThreshold: 0.35,
+    redemptionFrames: 15,
     minSpeechFrames: 5,
     startOnLoad: true,
     onSpeechStart: () => onSpeechStart(recorderRef.current), 
