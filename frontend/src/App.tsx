@@ -1,6 +1,7 @@
 import {useMicVADWrapper} from "./hooks/useMicVADWrapperXF.js";
 import RotateLoader from "react-spinners/RotateLoader";
-import {particleActions} from "./profile-chat-manager.ts";
+// import {particleActions} from "./profile-chat-manager.ts";
+import { particleActions } from "./particle-manager.ts"
 import {useState, useEffect} from "react";
 import Canvas from "./Canvas.tsx";
 

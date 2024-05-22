@@ -1,4 +1,5 @@
-import {particleActions} from "./profile-chat-manager.ts";
+// import {particleActions} from "./profile-chat-manager.ts";
+import { particleActions } from "./particle-manager.ts"
 import { SpeechPlayer } from "./player.ts";
 
 // let speechEndTimer: ReturnType<typeof setTimeout> | null = null;
@@ -10,8 +11,8 @@ let firstAudioSend = false
 
 const conversationThusFar = [];
 
-// const Url = "https://test.yangyang-backend.cn";
-const Url = "http://127.0.0.1:8000";
+const Url = import.meta.env.VITE_SERVER_URL;
+// const Url = "http://127.0.0.1:8000";
 
 export const onSpeechStart = debounce( async (record) => {
     if (!audioIsPlaying) {
