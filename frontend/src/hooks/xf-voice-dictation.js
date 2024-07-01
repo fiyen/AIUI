@@ -185,7 +185,7 @@ export default class IatRecorder {
             }
         }
         // 发送数据
-        this.webSocket.send(JSON.stringify(params));
+        this.webSocket.send({data: JSON.stringify(params)});
     }
     // 识别结束 webSocket返回数据
     webSocketRes(resultData) {

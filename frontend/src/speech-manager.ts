@@ -11,8 +11,8 @@ let firstAudioSend = false
 
 const conversationThusFar = [];
 
-const Url = import.meta.env.VITE_SERVER_URL;
-// const Url = "http://127.0.0.1:8000";
+// const Url = import.meta.env.VITE_SERVER_URL;
+const Url = "http://127.0.0.1:8000";
 
 export const onSpeechStart = debounce( async (record) => {
     if (!audioIsPlaying) {
@@ -144,6 +144,7 @@ const handleResponse = async (res) => {
 };
 
 const handleSuccess = async (response) => {
+    console.log("response", response)
     if (!speechIsStart) {
         audioIsPlaying = true
         // stopSourceIfNeeded();
